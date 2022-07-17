@@ -34,7 +34,14 @@ const PokemonDisplay: React.FC<PokemonDisplayProps> = ({
             backgroundColor: '#fff59e',
           }}
         >
-          <Image loader={() => src} src={src} width={300} height={300} alt="" />
+          <Image
+            loader={() => src}
+            src={src}
+            width={300}
+            height={300}
+            alt=""
+            unoptimized
+          />
           <Typography
             fontFamily={'monospace'}
             fontWeight={700}

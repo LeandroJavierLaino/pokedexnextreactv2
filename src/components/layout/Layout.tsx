@@ -1,11 +1,9 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Box,
   Grid,
   IconButton,
   Input,
-  InputAdornment,
-  TextField,
   ThemeProvider,
   Typography,
 } from '@mui/material'
@@ -15,27 +13,48 @@ import { theme } from '../../styles/theme'
 import LightButton from '../lightButton/LightButton'
 import { Screen } from '../screen/Screen'
 import PokemonDisplay from '../pokemonDisplay/PokemonDisplay'
-
-const pokemons = [
-  {
-    name: 'Pikachu',
-    imageSrc:
-      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png',
-  },
-  {
-    name: 'Ditto',
-    imageSrc:
-      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/132.png',
-  },
-  {
-    name: 'Bulbasaur',
-    imageSrc:
-      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png',
-  },
-]
+import { getPokemon, getPokemons } from '../../lib/api'
 
 export default function Layout() {
   const [pokemonIndex, setPokemonIndex] = useState<number>(0)
+  const [pokemonLinks, setPokemonLinks] = useState<Array<LinkPokemon>>([])
+  const [pokemonDataDisplay, setPokemonDataDisplay] = useState<PokemonData>({
+    height: 0,
+    moves: [],
+    name: '',
+    sprites: {
+      back_default: '',
+      front_default:
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png',
+    },
+    stats: [],
+    types: [],
+    weight: 0,
+    abilities: [],
+  })
+  const [searchValue, setSearchValue] = useState<string>('')
+
+  useEffect(() => {
+    const fetchPokemons = async () => {
+      const response = await getPokemons('')
+
+      setPokemonLinks(response)
+    }
+    fetchPokemons()
+  }, [])
+
+  useEffect(() => {
+    const fetchPokemon = async () => {
+      const pokemonURL = pokemonLinks[pokemonIndex]?.url
+      if (!!pokemonURL) {
+        const response = await getPokemon(pokemonURL)
+
+        setPokemonDataDisplay(response)
+      }
+    }
+
+    fetchPokemon()
+  }, [pokemonIndex, pokemonLinks])
 
   const upPokemon = () => {
     if (pokemonIndex > 0) {
@@ -44,9 +63,20 @@ export default function Layout() {
   }
 
   const downPokemon = () => {
-    if (pokemonIndex < pokemons.length) {
+    if (pokemonIndex < pokemonLinks.length) {
       setPokemonIndex(pokemonIndex + 1)
     }
+  }
+
+  function onSearchUpdate(
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
+    setSearchValue(event.target.value)
+  }
+
+  async function onSearchClick() {
+    const response = await getPokemons(searchValue)
+    setPokemonLinks(response)
   }
 
   return (
@@ -55,66 +85,101 @@ export default function Layout() {
         container
         sx={{
           backgroundColor: theme.palette.primary.main,
-          height: theme.spacing(120),
+          height: theme.spacing(106.5),
+          boxShadow: 'inset 0px 0px 25px black',
+          borderRadius: theme.spacing(1),
         }}
       >
-        <Grid xs={2}>
+        <Grid item xs={2}>
           <LightButton />
         </Grid>
-        <Grid sx={{ zIndex: 2 }} item container direction="column" xs={8}>
+        <Grid item container direction="column" xs={8}>
           <Grid item xs={0.5} sx={{ zIndex: 3 }}></Grid>
           <Box
             className="screen"
             sx={{
               boxShadow: '0px 0px 5px black',
+              borderRadius: theme.spacing(0.5),
             }}
           >
             <Screen theme={theme}>
               <PokemonDisplay
                 theme={theme}
-                src={pokemons[pokemonIndex].imageSrc}
-                name={pokemons[pokemonIndex].name}
+                src={pokemonDataDisplay?.sprites.front_default ?? ''}
+                name={
+                  `${pokemonDataDisplay?.name
+                    .charAt(0)
+                    .toUpperCase()}${pokemonDataDisplay?.name.slice(1)}` ??
+                  'NO DATA'
+                }
                 top={pokemonIndex === 0}
-                bottom={pokemonIndex === pokemons.length - 1}
+                bottom={pokemonIndex === pokemonLinks.length - 1}
                 up={upPokemon}
                 down={downPokemon}
               />
             </Screen>
           </Box>
 
-          <Grid item sx={{ marginBlock: theme.spacing(2), zIndex: 1 }}>
-            <Input
+          <Grid
+            item
+            container
+            direction="row"
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBlock: theme.spacing(1),
+            }}
+          >
+            <Grid
+              item
               sx={{
+                marginBlock: theme.spacing(2),
                 width: '80%',
-                borderRadius: theme.spacing(10),
-                backgroundColor: '#fff59e',
-                boxShadow: 'inset 0px 0px 15px black',
-                fontFamily: 'monospace',
-                fontWeight: 700,
-                paddingInline: theme.spacing(2),
-                '&:before': {
-                  borderBottom: '0px solid #fff',
-                },
+                zIndex: 1,
+                borderRadius: theme.spacing(1),
+                boxShadow: '0px 0px 15px black',
               }}
-            />
-            <IconButton>
-              <SearchRoundedIcon
+            >
+              <Input
                 sx={{
-                  backgroundColor: theme.palette.secondary.main,
-                  borderRadius: theme.spacing(3),
-                  padding: theme.spacing(0.5),
-                  color: theme.palette.common.white,
-                  boxShadow: '0px 0px 10px black',
+                  width: '100%',
+                  borderRadius: theme.spacing(1),
+                  backgroundColor: '#fff59e',
+                  boxShadow: 'inset 0px 0px 15px black',
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  paddingInline: theme.spacing(2),
+                  '&:before': {
+                    borderBottom: '0px solid #fff',
+                  },
                 }}
-                fontSize="large"
+                onChange={onSearchUpdate}
               />
-            </IconButton>
+            </Grid>
+            <Grid item>
+              <IconButton onClick={onSearchClick}>
+                <SearchRoundedIcon
+                  sx={{
+                    backgroundColor: theme.palette.secondary.main,
+                    borderRadius: theme.spacing(0.5),
+                    padding: theme.spacing(0.5),
+                    width: theme.spacing(4.5),
+                    color: theme.palette.common.white,
+                    boxShadow: '0px 0px 5px black',
+                  }}
+                  fontSize="large"
+                />
+              </IconButton>
+            </Grid>
           </Grid>
-          <Grid sx={{ zIndex: 1 }}>
+
+          <Grid item sx={{ zIndex: 1 }}>
             <Box
               className="screen"
               sx={{
                 boxShadow: '0px 0px 5px black',
+                borderRadius: theme.spacing(0.5),
               }}
             >
               <Screen theme={theme}>
@@ -125,14 +190,45 @@ export default function Layout() {
                   }}
                 >
                   <Typography fontFamily={'monospace'} fontWeight={700}>
-                    {`Tipo : electrico`}
+                    {`Altura : ${pokemonDataDisplay.height}`}
                   </Typography>
                   <Typography fontFamily={'monospace'} fontWeight={700}>
-                    {`Ataques : `}
+                    {`Peso : ${pokemonDataDisplay.weight}`}
                   </Typography>
                   <Typography fontFamily={'monospace'} fontWeight={700}>
-                    {`Debilidades : `}
+                    {`Tipo(s) : `}
                   </Typography>
+                  {pokemonDataDisplay.types.map((pokemonType) => {
+                    return (
+                      <Typography
+                        fontFamily={'monospace'}
+                        fontWeight={700}
+                        key={`type_pokemon_${pokemonType.type.name}`}
+                      >{`- ${pokemonType.type.name
+                        .charAt(0)
+                        .toUpperCase()}${pokemonType.type.name.slice(
+                        1
+                      )}`}</Typography>
+                    )
+                  })}
+                  <Typography fontFamily={'monospace'} fontWeight={700}>
+                    {`Habilidades : `}
+                  </Typography>
+                  {pokemonDataDisplay.abilities
+                    .filter((_, index) => index < 6)
+                    .map((pokemonAbility) => {
+                      return (
+                        <Typography
+                          fontFamily={'monospace'}
+                          fontWeight={700}
+                          key={`type_pokemon_${pokemonAbility.ability.name}`}
+                        >{`- ${pokemonAbility.ability.name
+                          .charAt(0)
+                          .toUpperCase()}${pokemonAbility.ability.name.slice(
+                          1
+                        )}`}</Typography>
+                      )
+                    })}
                 </Box>
               </Screen>
             </Box>
